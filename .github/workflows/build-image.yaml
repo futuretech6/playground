@@ -20,4 +20,5 @@ jobs:
       - name: Build the docker image and push
         run: |
           docker buildx create --use
+          docker run --privileged multiarch/qemu-user-static:latest --reset -p yes --credential yes
           docker buildx build --platform linux/amd64,linux/arm64 --tag ${{ secrets.DOCKERHUB_USERNAME }}/playground:latest --file Dockerfile --push .
