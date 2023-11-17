@@ -13,18 +13,19 @@ WORKDIR /home/player
 
 # omz
 RUN sudo apt-get install -y zsh
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+RUN sudo chsh player --shell $(which zsh)
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+RUN zsh
 RUN git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 RUN sed -i "s/plugins=(git)/plugins=(git zsh-syntax-highlighting zsh-autosuggestions)/" ~/.zshrc
 RUN sed -i 's/ZSH_THEME="[^"]*"/ZSH_THEME="ys"/' ~/.zshrc
 RUN echo "source ~/.profile" >> ~/.zshrc
 RUN echo "zstyle ':omz:update' mode disabled" >> ~/.zshrc
-RUN sudo chsh player --shell /bin/zsh
 
 # rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-RUN wget -P ~/.cargo/config.toml https://raw.githubusercontent.com/futuretech6/dotfiles/master/rust/config.toml
+RUN wget -O ~/.cargo/config.toml https://raw.githubusercontent.com/futuretech6/dotfiles/master/rust/config.toml
 
 # python
 RUN sudo apt-get install -y python3 python3-pip python-is-python3
@@ -38,4 +39,6 @@ RUN sudo n lts
 RUN hash -r
 
 # misc
-RUN wget -P ~/.vimrc https://raw.githubusercontent.com/futuretech6/dotfiles/master/vim/.vimrc
+RUN wget -O ~/.vimrc https://raw.githubusercontent.com/futuretech6/dotfiles/master/vim/.vimrc
+
+ENTRYPOINT /usr/bin/zsh
