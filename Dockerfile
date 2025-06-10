@@ -8,8 +8,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt update && apt-get --no-install-recommends install -y \
         wget curl git vim sudo \
-        zsh \
         python3 python3-pip python3-venv python-is-python3
+
+RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
 RUN groupadd -g "$GID" player || true
 RUN useradd -u "$UID" -g "$GID" -m -s /bin/bash player
@@ -19,5 +20,6 @@ RUN echo 'player ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER player
 WORKDIR /home/player
 
+RUN echo 'eval "$(starship init bash)"' >> ~/.bashrc
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
