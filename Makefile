@@ -5,9 +5,8 @@ IMAGE_NAME=playground
 
 build: Dockerfile
 	docker build \
+		--build-arg http_proxy=$(PROXY) \
 		--build-arg https_proxy=$(PROXY) \
-		--build-arg UID=$(shell id -u) \
-		--build-arg GID=$(shell id -g) \
 		--network=host \
 		--tag $(IMAGE_NAME) \
 		--file $< \
