@@ -12,23 +12,24 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get upgrade -y && \
     apt-get --no-install-recommends install -y \
-        wget curl git vim sudo \
+        wget curl git vim sudo jq \
         build-essential cmake \
         python3 python3-pip python3-venv python-is-python3
 
 # go
-ARG GO_VERSION=1.23.10
 RUN --mount=type=cache,target=/usr/local/go/src,sharing=locked \
     --mount=type=cache,target=/usr/local/go/test,sharing=locked \
-    curl -L "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" \
+    curl -L https://go.dev/dl/$(curl -s "https://go.dev/dl/?mode=json" \
+                                    | jq -r '.[0].version').linux-${TARGETARCH}.tar.gz \
         | sudo tar -C /usr/local -xz
 
 # starship
 RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
 # gosu
-ARG GOSU_VERSION=1.14
-RUN curl -Lo /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${TARGETARCH}" && \
+RUN curl -Lo /usr/local/bin/gosu \
+    $(curl -sL "https://api.github.com/repos/tianon/gosu/releases/latest" \
+          | jq --arg arch ${TARGETARCH} -r '.assets[] | select(.name == ("gosu-" + $arch)) | .browser_download_url') && \
     chmod +x /usr/local/bin/gosu && \
     gosu nobody true
 
