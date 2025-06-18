@@ -7,10 +7,15 @@ on:
 
 jobs:
   build-arch:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v3
@@ -21,7 +26,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWD }}
       - run: |
           docker buildx build \
-            --platform ${{ matrix.arch }} \
+            --platform linux/${{ matrix.arch }} \
             --tag ${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }} \
             --file Dockerfile \
             --push \
