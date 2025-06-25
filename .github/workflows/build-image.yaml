@@ -53,7 +53,7 @@ jobs:
             echo "Getting token for $DOCKERHUB_USER/$REPO:$TAG ..."
             TOKEN=$(curl -s -u "$DOCKERHUB_USER:$DOCKERHUB_TOKEN" \
               "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$DOCKERHUB_USER/$REPO:pull,push,delete" \
-              | jq -r .token)
+              | grep -o '"token":"[^"]*"' | cut -d':' -f2 | tr -d '"')
 
             echo "Getting digest for tag $TAG ..."
             DIGEST=$(curl -sI -H "Authorization: Bearer $TOKEN" \
