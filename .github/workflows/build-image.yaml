@@ -43,3 +43,30 @@ jobs:
             --tag ${{ secrets.DOCKERHUB_USERNAME }}/playground:latest \
             ${{ secrets.DOCKERHUB_USERNAME }}/playground:amd64 \
             ${{ secrets.DOCKERHUB_USERNAME }}/playground:arm64
+          - name: Delete :amd64 and :arm64 tags from Docker Hub
+      - env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_PASSWD }}
+          REPO: playground
+        run: |
+          for TAG in amd64 arm64; do
+            echo "Getting token for $DOCKERHUB_USER/$REPO:$TAG ..."
+            TOKEN=$(curl -s -u "$DOCKERHUB_USER:$DOCKERHUB_TOKEN" \
+              "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$DOCKERHUB_USER/$REPO:pull,push,delete" \
+              | jq -r .token)
+
+            echo "Getting digest for tag $TAG ..."
+            DIGEST=$(curl -sI -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+              https://registry-1.docker.io/v2/$DOCKERHUB_USER/$REPO/manifests/$TAG \
+              | grep --ignore-case Docker-Content-Digest | awk '{print $2}' | tr -d $'\r')
+
+            if [ -n "$DIGEST" ]; then
+              echo "Deleting manifest with digest $DIGEST ..."
+              curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
+                https://registry-1.docker.io/v2/$DOCKERHUB_USER/$REPO/manifests/$DIGEST \
+                && echo "Deleted $TAG" || echo "Failed to delete $TAG"
+            else
+              echo "Digest for tag $TAG not found, skipping"
+            fi
+          done
