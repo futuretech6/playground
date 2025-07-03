@@ -47,17 +47,18 @@ USER player
 
 # rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
-        -y --profile minimal
+        -y --profile minimal --no-modify-path
 
 # uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- \
+        -q --no-modify-path
 
 # CONFIG
 
 # root-level PATH config
 USER root
 RUN tee -a /etc/.profile -a /etc/bash.bashrc <<"EOF"
-export PATH=$PATH:/usr/local/go/bin
+export PATH="/usr/local/go/bin:$PATH"
 EOF
 RUN tee -a /etc/bash.bashrc <<"EOF"
 eval "$(starship init bash)"
@@ -69,6 +70,7 @@ RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i 's/deb.debian.or
 # user-level PATH config
 USER player
 RUN tee -a $HOME/.profile -a $HOME/.bashrc <<"EOF"
+export PATH="$HOME/.local/bin:$PATH"
 . "$HOME/.cargo/env"
 EOF
 
