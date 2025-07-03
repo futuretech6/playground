@@ -46,6 +46,36 @@ docker build \
     .
 ```
 
+## Dev Container
+
+To enable [Dev Containers](https://github.com/devcontainers/spec), add the following configuration to `.devcontainer/devcontainer.json` in your workspace:
+
+```json
+{
+  "name": "playground",
+  "image": "futuretech6/playground",
+  "userEnvProbe": "loginInteractiveShell",
+  "remoteEnv": {
+    "http_proxy": "${localEnv:http_proxy}",
+    "https_proxy": "${localEnv:https_proxy}",
+    "no_proxy": "${localEnv:no_proxy}",
+    "HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+    "HTTPS_PROXY": "${localEnv:HTTPS_PROXY}",
+    "NO_PROXY": "${localEnv:NO_PROXY}"
+  },
+  "runArgs": ["--network=host"],
+  "remoteUser": "player",
+  "customizations": {
+    "vscode": {
+      "extensions": [],
+      "settings": {
+        "http.proxy": "http://localhost:17890"
+      }
+    }
+  }
+}
+```
+
 ## GitHub Actions Automation
 
 This project uses GitHub Actions to automate image builds and releases. The configuration file is located at [`.github/workflows/build-image.yaml`](.github/workflows/build-image.yaml). Key features include:
