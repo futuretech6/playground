@@ -66,6 +66,12 @@ EOF
 
 # root-level proxy config
 RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' {}
+RUN mkdir -p /etc/uv && tee /etc/uv/uv.toml <<EOF
+python-install-mirror = "https://gh-proxy.com/github.com/astral-sh/python-build-standalone/releases/download"
+[[index]]
+url = "https://mirrors.ustc.edu.cn/pypi/simple"
+default = true
+EOF
 
 # user-level PATH config
 USER player
