@@ -3,7 +3,15 @@ name: build-image
 on:
   workflow_dispatch:
   push:
+    paths:
+      - "Dockerfile*"
+      - "entrypoint.sh"
+      - ".github/workflows/build-image.yaml"
   pull_request:
+    paths:
+      - "Dockerfile*"
+      - "entrypoint.sh"
+      - ".github/workflows/build-image.yaml"
   schedule:
     - cron: "0 0 * * 1" # build every monday
 
