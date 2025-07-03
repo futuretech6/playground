@@ -1,34 +1,55 @@
 #!/bin/bash
 set -e
 
-TARGET_DIR=${WORKSPACE:-/playground}
+DEFAULT_WORKSPACE=/playground
+WORKSPACE=${WORKSPACE:-$DEFAULT_WORKSPACE}
+
+echo "[*] Current workspace is $WORKSPACE."
 
 USERNAME=player
 GROUPNAME=player
 CURRENT_UID=$(id -u "$USERNAME" 2>/dev/null)
 CURRENT_GID=$(id -g "$USERNAME" 2>/dev/null)
 
-# check if TARGET_DIR is mounted
-if mountpoint -q "$TARGET_DIR"; then
-    HOST_UID=$(stat -c "%u" $TARGET_DIR)
-    HOST_GID=$(stat -c "%g" $TARGET_DIR)
+# Check if WORKSPACE or any parent directory is mounted
+current_dir="$WORKSPACE"
+is_mounted=false
+while [ "$current_dir" != "/" ]; do
+    if mountpoint -q "$current_dir"; then
+        echo "[*] $current_dir is a mount point."
+        is_mounted=true
+        break
+    fi
+    current_dir=$(dirname "$current_dir")
+done
 
-    # check if chid and chown are needed
+# After the loop, check the is_mounted flag
+if [ "$is_mounted" = true ]; then
+    HOST_UID=$(stat -c "%u" $WORKSPACE)
+    HOST_GID=$(stat -c "%g" $WORKSPACE)
+
     if [ "$CURRENT_UID:$CURRENT_GID" != "$HOST_UID:$HOST_GID" ]; then
-        echo "[*] Current UID:GID ($CURRENT_UID:$CURRENT_GID) does not match host UID:GID ($HOST_UID:$HOST_GID) for $TARGET_DIR."
+        echo "[*] Current UID:GID ($CURRENT_UID:$CURRENT_GID) does not match host UID:GID ($HOST_UID:$HOST_GID) of $WORKSPACE."
 
-        echo "[*] Chowning /home/${USERNAME}..."
-        chown -R "${USERNAME}:${GROUPNAME}" "/home/${USERNAME}"
-
-        echo "[*] Changing user $USERNAME:$GROUPNAME to $HOST_UID:$HOST_GID..."
+        echo "[*] Changing user $USERNAME:$GROUPNAME to $HOST_UID:$HOST_GID and chowning \"/home/${USERNAME}/\"..."
         usermod -u "$HOST_UID" "$USERNAME"
         groupmod -g "$HOST_GID" "$GROUPNAME"
+        chown -R "${USERNAME}:${GROUPNAME}" "/home/${USERNAME}"
+
+        echo "[*] ID Changed. Continuing as $USERNAME ($HOST_UID:$HOST_GID)."
     else
-        echo "[*] User ID and group ID match. Continuing as $USERNAME."
+        echo "[*] User ID and group ID matched. Continuing as $USERNAME ($HOST_UID:$HOST_GID)."
     fi
 else
-    echo "[!] $TARGET_DIR is not mounted. Continuing as $USERNAME and chown $TARGET_DIR."
-    chown -R "${USERNAME}:${GROUPNAME}" "${TARGET_DIR}"
+    echo "[!] $WORKSPACE is not mounted. Continuing as $USERNAME ($CURRENT_UID:$CURRENT_GID)."
+fi
+
+if [ -d "$WORKSPACE" ]; then
+    cd "$WORKSPACE"
+else
+    mkdir -p $DEFAULT_WORKSPACE
+    chown -R $USERNAME:$GROUPNAME $DEFAULT_WORKSPACE
+    cd $DEFAULT_WORKSPACE
 fi
 
 exec gosu "$USERNAME" "$@"

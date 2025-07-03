@@ -34,13 +34,12 @@ RUN curl -Lo /usr/local/bin/gosu \
     gosu nobody true
 
 # create user
-RUN groupadd player
-RUN useradd -g player -m -s /bin/bash player
-RUN usermod -aG sudo player
-RUN echo 'player ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-# set apt mirrors (for local use only, no need for build time)
-RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' {}
+ARG USERNAME=player
+ARG GROUPNAME=player
+RUN groupadd ${GROUPNAME} || true && \
+    useradd -g ${GROUPNAME} -m -s /bin/bash ${USERNAME} || true && \
+    usermod -aG sudo "${USERNAME}" && \
+    echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # INSTALL USER-LEVEL TOOLS
 
@@ -49,12 +48,6 @@ USER player
 # rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
         -y --profile minimal
-RUN tee $HOME/.cargo/config.toml <<EOF
-[source.crates-io]
-replace-with = 'ustc'
-[source.ustc]
-registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
-EOF
 
 # uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q
@@ -70,6 +63,9 @@ RUN tee -a /etc/bash.bashrc <<"EOF"
 eval "$(starship init bash)"
 EOF
 
+# root-level proxy config
+RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' {}
+
 # user-level PATH config
 USER player
 RUN tee -a $HOME/.profile -a $HOME/.bashrc <<"EOF"
@@ -79,6 +75,12 @@ EOF
 # user-level proxy config
 RUN /usr/local/go/bin/go env -w GOPROXY=https://goproxy.io,direct
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+RUN tee $HOME/.cargo/config.toml <<EOF
+[source.crates-io]
+replace-with = 'ustc'
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+EOF
 
 # enter entrypoint as root
 USER root
@@ -90,5 +92,4 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 # default command
 ENV WORKSPACE=/playground
-WORKDIR $WORKSPACE
 CMD ["/bin/bash"]
