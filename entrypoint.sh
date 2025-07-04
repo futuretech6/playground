@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 
-DEFAULT_WORKSPACE=/playground
-WORKSPACE=${WORKSPACE:-$DEFAULT_WORKSPACE}
+WORKSPACE=${WORKSPACE:-/playground}
 
 echo "[*] Current workspace is $WORKSPACE."
 
@@ -47,9 +46,9 @@ fi
 if [ -d "$WORKSPACE" ]; then
     cd "$WORKSPACE"
 else
-    mkdir -p $DEFAULT_WORKSPACE
-    chown -R $USERNAME:$GROUPNAME $DEFAULT_WORKSPACE
-    cd $DEFAULT_WORKSPACE
+    mkdir -p $WORKSPACE
+    chown -R $USERNAME:$GROUPNAME $WORKSPACE
+    cd $WORKSPACE
 fi
 
 exec gosu "$USERNAME" "$@"
