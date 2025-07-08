@@ -2,6 +2,12 @@ FROM debian:stable-slim
 
 ARG TARGETOS TARGETARCH
 
+ARG APT_MIRROR_DOMAIN=mirrors.ustc.edu.cn
+ARG PYPI_MIRROR=https://mirrors.ustc.edu.cn/pypi/simple
+ARG UV_PYTHON_INSTALL_MIRROR=https://gh-proxy.com/github.com/astral-sh/python-build-standalone/releases/download
+ARG GO_PROXY=https://goproxy.io,direct
+ARG CRATES_MIRROR=sparse+https://mirrors.ustc.edu.cn/crates.io-index/
+
 # INSTALL ROOT-LEVEL TOOLS
 
 # apt
@@ -66,11 +72,11 @@ eval "$(starship init bash)"
 EOF
 
 # root-level proxy config
-RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' {}
+RUN find /etc/apt -type f -name "*.sources" | xargs -I{} sed -i "s/deb.debian.org/$APT_MIRROR_DOMAIN/g" {}
 RUN mkdir -p /etc/uv && tee /etc/uv/uv.toml <<EOF
-python-install-mirror = "https://gh-proxy.com/github.com/astral-sh/python-build-standalone/releases/download"
+python-install-mirror = "$UV_PYTHON_INSTALL_MIRROR"
 [[index]]
-url = "https://mirrors.ustc.edu.cn/pypi/simple"
+url = "$PYPI_MIRROR"
 default = true
 EOF
 
@@ -82,13 +88,13 @@ export PATH="$HOME/.local/bin:$PATH"
 EOF
 
 # user-level proxy config
-RUN /usr/local/go/bin/go env -w GOPROXY=https://goproxy.io,direct
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+RUN /usr/local/go/bin/go env -w GOPROXY=$GO_PROXY
+RUN pip config set global.index-url $PYPI_MIRROR
 RUN tee $HOME/.cargo/config.toml <<EOF
 [source.crates-io]
-replace-with = 'ustc'
+replace-with = "ustc"
 [source.ustc]
-registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+registry = "$CRATES_MIRROR"
 EOF
 
 # enter entrypoint as root
