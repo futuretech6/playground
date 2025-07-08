@@ -24,7 +24,8 @@ RUN --mount=type=cache,target=/usr/local/go/src,sharing=locked \
         | sudo tar -C /usr/local -xz
 
 # starship
-RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
+RUN --mount=type=cache,target=/tmp \
+    curl -sSf https://starship.rs/install.sh | sh -s -- -y
 
 # gosu
 RUN curl -Lo /usr/local/bin/gosu \
