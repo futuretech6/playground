@@ -29,13 +29,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWD }}
-      - run: |
-          docker buildx build \
-            --platform linux/${{ matrix.arch }} \
-            --tag ${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }} \
-            --file Dockerfile \
-            --push \
-            .
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}
+          file: Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}-buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}-buildcache
+          push: true
 
   merge-manifest:
     needs: build-arch
