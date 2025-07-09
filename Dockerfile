@@ -1,6 +1,31 @@
+FROM alpine:latest AS downloader
+
+ARG TARGETOS TARGETARCH
+ARG DOWNLOAD_DIR=/downloads
+
+# add download tools
+RUN apk add --no-cache curl jq
+
+# create and set download directory
+RUN mkdir -p ${DOWNLOAD_DIR}
+
+# go (ignore src and test to reduce size)
+RUN --mount=type=cache,target=${DOWNLOAD_DIR}/go/src,sharing=locked \
+    --mount=type=cache,target=${DOWNLOAD_DIR}/go/test,sharing=locked \
+    curl -L https://go.dev/dl/$(curl -s "https://go.dev/dl/?mode=json" \
+                                    | jq -r '.[0].version').linux-${TARGETARCH}.tar.gz \
+        | tar -C ${DOWNLOAD_DIR} -xz
+
+# gosu
+RUN curl -Lo ${DOWNLOAD_DIR}/gosu \
+    $(curl -sL "https://api.github.com/repos/tianon/gosu/releases/latest" \
+          | jq --arg arch ${TARGETARCH} -r '.assets[] | select(.name == ("gosu-" + $arch)) | .browser_download_url') && \
+    chmod +x ${DOWNLOAD_DIR}/gosu
+
 FROM debian:stable-slim
 
 ARG TARGETOS TARGETARCH
+ARG DOWNLOAD_DIR=/downloads
 
 ARG APT_MIRROR_DOMAIN=mirrors.ustc.edu.cn
 ARG PYPI_MIRROR=https://mirrors.ustc.edu.cn/pypi/simple
@@ -23,22 +48,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         python3 python3-pip python3-venv python-is-python3
 
 # go
-RUN --mount=type=cache,target=/usr/local/go/src,sharing=locked \
-    --mount=type=cache,target=/usr/local/go/test,sharing=locked \
-    curl -L https://go.dev/dl/$(curl -s "https://go.dev/dl/?mode=json" \
-                                    | jq -r '.[0].version').linux-${TARGETARCH}.tar.gz \
-        | sudo tar -C /usr/local -xz
+COPY --from=downloader ${DOWNLOAD_DIR}/go /usr/local/go
 
 # starship
 RUN --mount=type=cache,target=/tmp \
     curl -sSf https://starship.rs/install.sh | sh -s -- -y
 
 # gosu
-RUN curl -Lo /usr/local/bin/gosu \
-    $(curl -sL "https://api.github.com/repos/tianon/gosu/releases/latest" \
-          | jq --arg arch ${TARGETARCH} -r '.assets[] | select(.name == ("gosu-" + $arch)) | .browser_download_url') && \
-    chmod +x /usr/local/bin/gosu && \
-    gosu nobody true
+COPY --from=downloader ${DOWNLOAD_DIR}/gosu /usr/local/bin/gosu
 
 # create user
 ARG USERNAME=player
