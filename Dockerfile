@@ -1,10 +1,10 @@
-FROM alpine:latest AS downloader
+FROM debian:stable-slim AS downloader
 
 ARG TARGETOS TARGETARCH
 ARG DOWNLOAD_DIR=/downloads
 
 # add download tools
-RUN apk add --no-cache curl jq
+RUN apt-get update && apt-get install -y curl jq tar
 
 # create and set download directory
 RUN mkdir -p ${DOWNLOAD_DIR}
@@ -16,11 +16,31 @@ RUN --mount=type=cache,target=${DOWNLOAD_DIR}/go/src,sharing=locked \
                                     | jq -r '.[0].version').linux-${TARGETARCH}.tar.gz \
         | tar -C ${DOWNLOAD_DIR} -xz
 
+# starship
+RUN --mount=type=cache,target=/tmp \
+    curl -sSf https://starship.rs/install.sh | sh -s -- -y
+
 # gosu
 RUN curl -Lo ${DOWNLOAD_DIR}/gosu \
     $(curl -sL "https://api.github.com/repos/tianon/gosu/releases/latest" \
           | jq --arg arch ${TARGETARCH} -r '.assets[] | select(.name == ("gosu-" + $arch)) | .browser_download_url') && \
     chmod +x ${DOWNLOAD_DIR}/gosu
+
+# rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
+        -y --profile minimal --no-modify-path
+
+# nodejs
+RUN --mount=type=cache,target=/tmp \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash && \
+    bash -c ". $HOME/.nvm/nvm.sh && \
+    nvm install --lts && \
+    nvm use --lts && \
+    nvm cache clear"
+
+# uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- \
+        -q --no-modify-path
 
 FROM debian:stable-slim
 
@@ -51,8 +71,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY --from=downloader ${DOWNLOAD_DIR}/go /usr/local/go
 
 # starship
-RUN --mount=type=cache,target=/tmp \
-    curl -sSf https://starship.rs/install.sh | sh -s -- -y
+COPY --from=downloader /usr/local/bin/starship /usr/local/bin/starship
 
 # gosu
 COPY --from=downloader ${DOWNLOAD_DIR}/gosu /usr/local/bin/gosu
@@ -67,23 +86,18 @@ RUN groupadd ${GROUPNAME} || true && \
 
 # INSTALL USER-LEVEL TOOLS
 
-USER $USERNAME
+USER ${USERNAME}
 
 # rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
-        -y --profile minimal --no-modify-path
+COPY --from=downloader --chown=${USERNAME}:${GROUPNAME} /root/.cargo /home/${USERNAME}/.cargo
+COPY --from=downloader --chown=${USERNAME}:${GROUPNAME} /root/.rustup /home/${USERNAME}/.rustup
 
-# uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- \
-        -q --no-modify-path
+# nodejs
+COPY --from=downloader --chown=${USERNAME}:${GROUPNAME} /root/.nvm /home/${USERNAME}/.nvm
 
-# Node.js
-RUN --mount=type=cache,target=/tmp \
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash && \
-    bash -c ". $HOME/.nvm/nvm.sh && \
-    nvm install --lts && \
-    nvm use --lts && \
-    nvm cache clear"
+# uv (ignore ~/.config/uv/uv-receipt.json)
+COPY --from=downloader --chown=${USERNAME}:${GROUPNAME} /root/.local/bin/uv /home/${USERNAME}/.local/bin/uv
+COPY --from=downloader --chown=${USERNAME}:${GROUPNAME} /root/.local/bin/uvx /home/${USERNAME}/.local/bin/uvx
 
 # CONFIG
 
@@ -106,10 +120,15 @@ default = true
 EOF
 
 # user-level PATH config
-USER $USERNAME
+USER ${USERNAME}
 RUN tee -a $HOME/.profile -a $HOME/.bashrc <<"EOF"
 export PATH="$HOME/.local/bin:$PATH"
+
 . "$HOME/.cargo/env"
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 EOF
 
 # user-level proxy config
