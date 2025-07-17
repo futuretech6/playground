@@ -67,7 +67,7 @@ RUN groupadd ${GROUPNAME} || true && \
 
 # INSTALL USER-LEVEL TOOLS
 
-USER player
+USER $USERNAME
 
 # rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
@@ -76,6 +76,14 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
 # uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- \
         -q --no-modify-path
+
+# Node.js
+RUN --mount=type=cache,target=/tmp \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash && \
+    bash -c ". $HOME/.nvm/nvm.sh && \
+    nvm install --lts && \
+    nvm use --lts && \
+    nvm cache clear"
 
 # CONFIG
 
@@ -98,7 +106,7 @@ default = true
 EOF
 
 # user-level PATH config
-USER player
+USER $USERNAME
 RUN tee -a $HOME/.profile -a $HOME/.bashrc <<"EOF"
 export PATH="$HOME/.local/bin:$PATH"
 . "$HOME/.cargo/env"
