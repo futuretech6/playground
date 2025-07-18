@@ -35,8 +35,8 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}
           file: Dockerfile
           platforms: linux/${{ matrix.arch }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}-buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/playground:${{ matrix.arch }}-buildcache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           push: true
 
   merge-manifest:
