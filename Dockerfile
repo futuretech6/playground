@@ -131,6 +131,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 EOF
 
+# user-level feature config
+RUN sed -i "s/#[ \t]*alias /alias /g" $HOME/.bashrc
+
 # user-level proxy config
 RUN /usr/local/go/bin/go env -w GOPROXY=$GO_PROXY
 RUN pip config set global.index-url $PYPI_MIRROR
