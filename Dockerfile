@@ -65,7 +65,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get --no-install-recommends install -y \
         wget curl git vim sudo jq \
         build-essential cmake \
-        python3 python3-pip python3-venv python-is-python3
+        python3 python3-pip python3-venv python-is-python3 \
+        bash-completion
 
 # go
 COPY --from=downloader ${DOWNLOAD_DIR}/go /usr/local/go
@@ -117,6 +118,17 @@ python-install-mirror = "$UV_PYTHON_INSTALL_MIRROR"
 [[index]]
 url = "$PYPI_MIRROR"
 default = true
+EOF
+
+# root-level input config
+RUN sudo tee -a /etc/inputrc <<EOF
+set show-all-if-ambiguous On
+set completion-ignore-case On
+set colored-stats Off
+set colored-completion-prefix On
+set mark-directories On
+"\e[A": history-search-backward
+"\e[B": history-search-forward
 EOF
 
 # user-level PATH config
